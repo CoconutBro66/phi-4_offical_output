@@ -47,7 +47,7 @@ def process_func(example):
     instruction = tokenizer(
         f"<|im_start|>system\nYou are an expert in the field of multi label classification. Given an article and an entity within that article. What you need to do is analyze this article and the entity, and provide the fine-grained roles of the entity. There are more than one fine-grained role. If there are multiple roles, they should be followed directly in the output, separated by spaces.List of fine-grained role:{all_fine_grained_roles_list}<|im_sep|>\n<|im_start|>user\n{example['input']}<|im_sep|>\n<|im_start|>assistant<|im_sep|>\n",
         add_special_tokens=False,
-    )
+    )   # 这里格式不对，看清楚了
     response = tokenizer(f"{example['output']}", add_special_tokens=False)
     input_ids = instruction["input_ids"] + response["input_ids"] + [tokenizer.pad_token_id]
     attention_mask = (
@@ -63,28 +63,41 @@ def process_func(example):
 
 def predict(messages, model, tokenizer):
     device = "cuda"
-    temperature=0.2
-    text = tokenizer.apply_chat_template(
-        messages,
-        tokenize=False,
-        add_generation_prompt=True
+    pipeline = transformers.pipeline(
+      "text-generation",
+      model="microsoft/phi-4",
+      model_kwargs={"torch_dtype": "auto"},
+      device_map="auto",
     )
-    model_inputs = tokenizer([text], return_tensors="pt").to(device)
+    outputs = pipeline(messages, max_new_tokens=128)
+    response = outputs[0]["generated_text"][-1]
+    return response
 
-    generated_ids = model.generate(
-        model_inputs.input_ids,
-        max_new_tokens=512,
-        temperature=temperature
-    )
-    generated_ids = [
-        output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
-    ]
+  
 
-    response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
-    print(response)
-    with open("result_epoch10.txt", "a",encoding='utf-8') as f:
-        f.writelines(response)
-        f.write("\n")
+  
+    # temperature=0.2
+    # text = tokenizer.apply_chat_template(
+    #     messages,
+    #     tokenize=False,
+    #     add_generation_prompt=True
+    # )
+    # model_inputs = tokenizer([text], return_tensors="pt").to(device)
+
+    # generated_ids = model.generate(
+    #     model_inputs.input_ids,
+    #     max_new_tokens=512,
+    #     temperature=temperature
+    # )
+    # generated_ids = [
+    #     output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
+    # ]
+
+    # response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
+    # print(response)
+    # with open("result_epoch10.txt", "a",encoding='utf-8') as f:
+    #     f.writelines(response)
+    #     f.write("\n")
     return response
 
 
